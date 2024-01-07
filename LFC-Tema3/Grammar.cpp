@@ -315,3 +315,53 @@ Grammar Grammar::RemoveInaccessibleSymbols() const {
 	}
 	return { newAccessible, m_VT, newProductions, m_S };
 }
+
+Grammar Grammar::ConvertIDCtoFNC() const {
+	std::set<Production> newProductions;
+	std::map<char, char> terminalToNonTerminal;
+	char nextNonTerminal = 'K';
+
+	// Step 1: Remove renamings
+	Grammar simplifiedGrammar = RemoveRenamings();
+
+	// Step 2: Replace terminals with new non-terminals where necessary and add new productions
+	for (const auto& [left, right] : simplifiedGrammar.m_P) {
+		std::string newRight;
+		for (char symbol : right) {
+			if (simplifiedGrammar.m_VT.find(symbol) != simplifiedGrammar.m_VT.end()) {
+				if (terminalToNonTerminal.find(symbol) == terminalToNonTerminal.end()) {
+					while (simplifiedGrammar.m_VN.find(nextNonTerminal) != simplifiedGrammar.m_VN.end())
+						nextNonTerminal++;
+					terminalToNonTerminal[symbol] = nextNonTerminal;
+					newProductions.insert({ std::string(1, nextNonTerminal), std::string(1, symbol) });
+					simplifiedGrammar.m_VN.insert(nextNonTerminal);
+				}
+				newRight.push_back(terminalToNonTerminal[symbol]);
+			}
+			else newRight.push_back(symbol);
+		}
+		newProductions.insert({ left, newRight });
+	}
+
+	// Step 3: Ensure all productions are binary
+	for (auto it = newProductions.begin(); it != newProductions.end(); ) {
+		const auto& [left, right] = *it;
+		if (right.size() > 2) {
+			// Break down productions with more than two symbols on the right-hand side
+			std::string remaining = right.substr(1);
+			char newSymbol;
+			do {
+				newSymbol = nextNonTerminal;
+				while (simplifiedGrammar.m_VN.find(nextNonTerminal) != simplifiedGrammar.m_VN.end())
+					nextNonTerminal++;
+				std::string newRight = remaining.substr(0, 1) + std::string(1, newSymbol);
+				newProductions.insert({ std::string(1, newSymbol), remaining.substr(1) });
+				remaining = newRight;
+			} while (remaining.size() > 2);
+			it = newProductions.erase(it); // Remove old production
+			newProductions.insert({ left, remaining }); // Insert the new production with a binary right-hand side
+		}
+		else ++it;
+	}
+	return { simplifiedGrammar.m_VN, simplifiedGrammar.m_VT, newProductions, simplifiedGrammar.m_S };
+}

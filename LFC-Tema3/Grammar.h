@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <map>
 
 using Production = std::pair<std::string, std::string>;
 
@@ -43,4 +44,5 @@ public:
 	Grammar RemoveRenamings() const;
 	Grammar RemoveLambdaProductions() const;
 	Grammar SimplifyIDC() const;
+	Grammar ConvertIDCtoFNC() const;
 };
