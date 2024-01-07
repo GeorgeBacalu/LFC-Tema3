@@ -4,6 +4,7 @@
 #include <string>
 #include <set>
 #include <map>
+#include "PushDownAutomaton.h"
 
 using Production = std::pair<std::string, std::string>;
 
@@ -46,4 +47,6 @@ public:
 	Grammar SimplifyIDC() const;
 	Grammar ConvertIDCtoFNC() const;
 	Grammar ConvertFNCtoFNG() const;
+	PushDownAutomaton toPushDownAutomaton() const;
+
 };

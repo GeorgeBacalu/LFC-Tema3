@@ -412,3 +412,49 @@ Grammar Grammar::ConvertFNCtoFNG() const {
 		}
 	return { m_VN, m_VT, newProductions, m_S };
 }
+
+PushDownAutomaton Grammar::toPushDownAutomaton() const
+{
+	PushDownAutomaton pda;
+
+	
+	std::set<std::string> stari;
+	for (char neterminal : m_VN) {
+		stari.insert({ std::string{ neterminal } });
+	}
+	stari.insert("T");
+
+	
+	pda.setStari(stari);
+	pda.setAlfabetIntrare(m_VT);
+	pda.setAlfabetMemorie(m_VN);  
+	pda.setStareInitiala(std::string{ m_S });
+	pda.setSimbolStartMemorie('@'); 
+
+	
+	FunctieTranzitiePD functieTranzitie;
+	for (const auto& [stanga, dreapta] : m_P) {
+		std::string stare1{ stanga };
+		char simbolIntrare = dreapta[0];
+		char simbolMemorie = dreapta.size() == 2 ? dreapta[1] : '@';  // Assuming '@' represents the empty string
+		std::string stare2 = dreapta.size() == 2 ? std::string{ dreapta[1] } : "T";
+		functieTranzitie[{stare1, simbolIntrare, simbolMemorie}].push_back(stare2);
+	}
+
+
+	pda.setFunctieTranzitiePD(functieTranzitie);
+
+	
+	std::set<std::string> stariFinale;
+	for (const auto& [left, _] : m_P) {
+		if (left.size() == 1 && m_VN.find(left[0]) != m_VN.end()) {
+			stariFinale.insert(left);
+		}
+	}
+	if (!stariFinale.empty()) {
+		stariFinale.insert("T");
+	}
+	pda.setStariFinale(stariFinale);
+
+	return pda;
+}
