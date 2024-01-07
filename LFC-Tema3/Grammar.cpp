@@ -1,4 +1,4 @@
-#include "Grammar.h"
+﻿#include "Grammar.h"
 #include <vector>
 #include <random>
 
@@ -317,6 +317,10 @@ Grammar Grammar::RemoveInaccessibleSymbols() const {
 }
 
 Grammar Grammar::ConvertIDCtoFNC() const {
+	if(!IsIDC()) {
+		std::cout << "Invalid IDC grammar!\n";
+		return *this;
+	}
 	std::set<Production> newProductions;
 	std::map<char, char> terminalToNonTerminal;
 	char nextNonTerminal = 'K';
@@ -364,4 +368,47 @@ Grammar Grammar::ConvertIDCtoFNC() const {
 		else ++it;
 	}
 	return { simplifiedGrammar.m_VN, simplifiedGrammar.m_VT, newProductions, simplifiedGrammar.m_S };
+}
+
+Grammar Grammar::ConvertFNCtoFNG() const {
+	if (!IsIDC()) {
+		std::cout << "Invalid IDC grammar!\n";
+		return *this;
+	}
+	Grammar simplifiedGrammar = ConvertIDCtoFNC();
+	std::set<Production> newProductions;
+	char newNonTerminal = 'Z';
+
+	// Step 1: Ensure that all rules with a non-terminal on the right-hand side start with a terminal
+	for (const auto& [left, right] : simplifiedGrammar.m_P) {
+		if (right.size() > 1 && simplifiedGrammar.m_VT.find(right[0]) == simplifiedGrammar.m_VT.end()) {
+			// If the production starts with a non-terminal, apply Lemma 1
+			// Find all productions of the non-terminal that starts the production
+			char nonTerminal = right[0];
+			for (const auto& [subLeft, subRight] : simplifiedGrammar.m_P)
+				if (subLeft[0] == nonTerminal && simplifiedGrammar.m_VT.find(subRight[0]) != simplifiedGrammar.m_VT.end()) {
+					// For each such production, replace the non-terminal with its productions
+					std::string newRight = subRight + right.substr(1);
+					newProductions.insert({ left, newRight });
+				}
+		}
+		else newProductions.insert({left, right}); // If the production already starts with a terminal or is a single non-terminal, keep it
+	}
+
+	// Step 2: Eliminate left recursion using Lemma 2
+	for (const auto& [left, right] : newProductions)
+		if (left[0] == right[0]) {
+			// We have a Left recursion (A -> Aα) => Introduce a new non-terminal 'Z' and replace rules according to Lemma 2
+			while (simplifiedGrammar.m_VN.find(newNonTerminal) != simplifiedGrammar.m_VN.end())
+				newNonTerminal++; // Ensure the new symbol is not already in use
+			std::string newNonTerminalStr(1, newNonTerminal);
+			simplifiedGrammar.m_VN.insert(newNonTerminal);
+			// Replace the recursive rule with: A -> βZ
+			newProductions.erase({left, right}); // Remove the recursive production
+			newProductions.insert({ left, right.substr(1) + newNonTerminalStr });
+			// Add a rule for the new non-terminal: Z -> αZ | λ
+			newProductions.insert({ newNonTerminalStr, right.substr(1) + newNonTerminalStr });
+			newProductions.insert({ newNonTerminalStr, "" }); // This represents the empty string λ
+		}
+	return { m_VN, m_VT, newProductions, m_S };
 }

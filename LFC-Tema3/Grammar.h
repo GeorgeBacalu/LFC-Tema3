@@ -45,4 +45,5 @@ public:
 	Grammar RemoveLambdaProductions() const;
 	Grammar SimplifyIDC() const;
 	Grammar ConvertIDCtoFNC() const;
+	Grammar ConvertFNCtoFNG() const;
 };
